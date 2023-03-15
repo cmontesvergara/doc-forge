@@ -26,7 +26,7 @@ RUN npm install --only=production
 COPY . .
 
 COPY --from=development /usr/src/app/dist ./dist
-
+RUN chmod -R 777 /usr/src/app
 ENV PORT 80
 EXPOSE 80
 
