@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
-import { InvoiceController } from './invoice/invoice.controller';
-import { InvoiceService } from './invoice/invoice.service';
+import { InvoiceController } from './bill/bill.controller';
+import { BillService } from './bill/bill.service';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { UtilService } from './shared/services/util/util.service';
@@ -15,6 +15,6 @@ import { UtilService } from './shared/services/util/util.service';
     }),
   ],
   controllers: [AppController, InvoiceController],
-  providers: [AppService, InvoiceService, UtilService],
+  providers: [AppService, BillService, UtilService],
 })
 export class AppModule {}

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { InvoiceController } from './invoice.controller';
+import { InvoiceController } from './bill.controller';
 
-describe('InvoiceController', () => {
+describe('BillController', () => {
   let controller: InvoiceController;
 
   beforeEach(async () => {

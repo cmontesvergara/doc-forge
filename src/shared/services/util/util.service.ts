@@ -27,19 +27,7 @@ export class UtilService {
   generatePathFolder(...names: string[]): string {
     return path.join(__dirname, '..', '..', '..', '..', ...names);
   }
-  getDocSetting(key: string) {
-    switch (key) {
-      case 'mountainsoft':
-        return {
-          size: 'LETTER',
-          font: 'Courier',
-          bufferPages: true,
-        };
 
-      default:
-        return {};
-    }
-  }
   async getAmountInLetters(amount: number) {
     const response = await axios.get(
       `http://numerosaletras.com/Home/ConvertirNumerosALetras?numero=${amount}`,
