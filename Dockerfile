@@ -1,12 +1,30 @@
-FROM node:18-alpine
-RUN apk update && apk upgrade && \
-    apk add --no-cache git
-RUN mkdir -p /usr/src/app
+FROM node:12.19.0-alpine3.9 AS development
+
 WORKDIR /usr/src/app
-COPY ./dist/. /usr/src/app/
 
-ENV NODE_ENV production
-ENV PORT 80
-EXPOSE 80
+COPY package*.json ./
 
-CMD [ "node", "src/main.js" ]
+RUN npm install glob rimraf
+
+RUN npm install --only=development
+
+COPY . .
+
+RUN npm run build
+
+FROM node:12.19.0-alpine3.9 as production
+
+ARG NODE_ENV=production
+ENV NODE_ENV=${NODE_ENV}
+
+WORKDIR /usr/src/app
+
+COPY package*.json ./
+
+RUN npm install --only=production
+
+COPY . .
+
+COPY --from=development /usr/src/app/dist ./dist
+
+CMD ["node", "dist/src/main"]
