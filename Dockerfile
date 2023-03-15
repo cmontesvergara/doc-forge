@@ -10,4 +10,4 @@ ENV NODE_ENV production
 ENV PORT 80
 EXPOSE 80
 
-CMD [ "node", "dist/main" ]
+CMD [ "node", "dist/src/main" ]
