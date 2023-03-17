@@ -11,8 +11,8 @@ const common_1 = require("@nestjs/common");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
 const config_1 = require("@nestjs/config");
-const bill_controller_1 = require("./bill/bill.controller");
-const bill_service_1 = require("./bill/bill.service");
+const generator_controller_1 = require("./modules/generator/generator.controller");
+const generator_service_1 = require("./modules/generator/generator.service");
 const serve_static_1 = require("@nestjs/serve-static");
 const path_1 = require("path");
 const util_service_1 = require("./shared/services/util/util.service");
@@ -26,8 +26,8 @@ AppModule = __decorate([
                 rootPath: (0, path_1.join)(__dirname, '..', 'public'),
             }),
         ],
-        controllers: [app_controller_1.AppController, bill_controller_1.InvoiceController],
-        providers: [app_service_1.AppService, bill_service_1.BillService, util_service_1.UtilService],
+        controllers: [app_controller_1.AppController, generator_controller_1.GeneratorController],
+        providers: [app_service_1.AppService, generator_service_1.GeneratorService, util_service_1.UtilService],
     })
 ], AppModule);
 exports.AppModule = AppModule;

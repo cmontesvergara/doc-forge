@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.t0000002199 = void 0;
+exports.t0000002198 = void 0;
 const PDFDocument = require('pdfkit');
-function t0000002199(payload) {
+function t0000002198(payload) {
     const setting = {
         size: 'LETTER',
         font: 'Courier',
@@ -32,7 +32,7 @@ function t0000002199(payload) {
         .moveDown()
         .font('Courier-Bold')
         .fontSize(18)
-        .text('RECIBO DE PAGO', { align: 'center' });
+        .text('CUENTA DE COBRO ', { align: 'center' });
     doc
         .moveDown()
         .moveDown()
@@ -55,7 +55,7 @@ function t0000002199(payload) {
         .moveDown()
         .moveDown()
         .fontSize(12)
-        .text('pago la cantidad de:', { align: 'center' });
+        .text('debe la cantidad de:', { align: 'center' });
     doc
         .moveDown()
         .moveDown()
@@ -94,21 +94,21 @@ function t0000002199(payload) {
     for (const i of payload.items) {
         doc
             .fontSize(12)
-            .text(`_________________________________________________________________`, {
+            .text(`_________________________________________________________`, {
             align: 'left',
         })
             .moveDown()
             .text(`* ${i.description}`, { align: 'left' });
     }
     doc
-        .text(`_________________________________________________________________`, {
+        .text(`_________________________________________________________`, {
         align: 'left',
     })
         .moveDown()
         .moveDown()
         .moveDown()
         .fontSize(12)
-        .text('Firma de quien recibe:', { align: 'left' });
+        .text('Cancelar a la mayor brevedad posible a una de las siguientes cuentas bancarias:', { align: 'left' });
     doc
         .moveDown()
         .image('public/img/table_accounts.png', {
@@ -120,7 +120,7 @@ function t0000002199(payload) {
         .moveDown()
         .font('Courier')
         .fontSize(10)
-        .text('Valide la autenticidad de este documento en:', { align: 'left' })
+        .text('Valide la firma de este documento en:', { align: 'left' })
         .fontSize(9)
         .font('Courier-Bold')
         .text('https://mountainsoft.co/validate-document', {
@@ -145,5 +145,5 @@ function t0000002199(payload) {
     }
     return doc;
 }
-exports.t0000002199 = t0000002199;
-//# sourceMappingURL=t0000002199.js.map
+exports.t0000002198 = t0000002198;
+//# sourceMappingURL=t0000002198%20copy.js.map

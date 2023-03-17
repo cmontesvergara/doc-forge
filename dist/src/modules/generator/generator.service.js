@@ -14,8 +14,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GeneratorService = void 0;
 const common_1 = require("@nestjs/common");
-const util_service_1 = require("../shared/services/util/util.service");
-const templates_1 = __importDefault(require("../shared/templates"));
+const util_service_1 = require("../../shared/services/util/util.service");
+const templates_1 = __importDefault(require("../../shared/templates"));
 const fs = require('fs');
 let GeneratorService = class GeneratorService {
     constructor(utilService) {
@@ -47,4 +47,4 @@ GeneratorService = __decorate([
     __metadata("design:paramtypes", [util_service_1.UtilService])
 ], GeneratorService);
 exports.GeneratorService = GeneratorService;
-//# sourceMappingURL=bill.service.js.map
+//# sourceMappingURL=generator.service.js.map

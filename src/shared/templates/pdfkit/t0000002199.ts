@@ -39,7 +39,7 @@ export function t0000002199(payload) {
     .moveDown()
     .font('Courier-Bold')
     .fontSize(18)
-    .text('CUENTA DE COBRO ', { align: 'center' });
+    .text('RECIBO DE PAGO', { align: 'center' });
 
   //=> CLIENT NAME
   doc
@@ -51,12 +51,15 @@ export function t0000002199(payload) {
       align: 'center',
     });
   //=> CLIENT TYPE ID
-  doc.font('Courier').fontSize(12).text('nit: ', { align: 'center' });
+  doc
+    .font('Courier')
+    .fontSize(12)
+    .text(`${payload.client.docType}: `, { align: 'center' });
   //=> CLIENT ID NUMBER
   doc
     .font('Courier')
     .fontSize(14)
-    .text(`${payload.client.nit} `, { align: 'center' })
+    .text(`${payload.client.docNumber} `, { align: 'center' })
     .font('Courier')
     .fontSize(16);
   //=> TEXT AUXILIAR
@@ -64,7 +67,7 @@ export function t0000002199(payload) {
     .moveDown()
     .moveDown()
     .fontSize(12)
-    .text('debe la cantidad de:', { align: 'center' });
+    .text('pago la cantidad de:', { align: 'center' });
   //=> AMOUNT
   doc
     .moveDown()
@@ -92,11 +95,11 @@ export function t0000002199(payload) {
     //=> EXPEDITOR DOCUMENT TYPE
     .font('Courier')
     .fontSize(12)
-    .text('cc: ', { align: 'center' })
+    .text(`${payload.creditor.docType}: `, { align: 'center' })
     //=> EXPEDITOR DOCUMENT NUMBER
     .font('Courier')
     .fontSize(14)
-    .text(`${payload.creditor.nit} `, { align: 'center' })
+    .text(`${payload.creditor.docNumber} `, { align: 'center' })
     .font('Courier')
     .fontSize(16);
   //=> TEXT AUXILIAR
@@ -111,15 +114,18 @@ export function t0000002199(payload) {
   for (const i of payload.items) {
     doc
       .fontSize(12)
-      .text(`_________________________________________________________`, {
-        align: 'left',
-      })
+      .text(
+        `_________________________________________________________________`,
+        {
+          align: 'left',
+        },
+      )
       .moveDown()
       .text(`* ${i.description}`, { align: 'left' });
   }
   //=> AUXILIAR LINE
   doc
-    .text(`_________________________________________________________`, {
+    .text(`_________________________________________________________________`, {
       align: 'left',
     })
     .moveDown()
@@ -127,10 +133,7 @@ export function t0000002199(payload) {
     .moveDown()
     //=> AUXILIAR TEXT
     .fontSize(12)
-    .text(
-      'Cancelar a la mayor brevedad posible a una de las siguientes cuentas bancarias:',
-      { align: 'left' },
-    );
+    .text('Firma de quien recibe:', { align: 'left' });
 
   //=> INSERT ACCOUNTS IMAGE TABLE
   doc
@@ -145,7 +148,7 @@ export function t0000002199(payload) {
     //=> FINISH COMMENTS
     .font('Courier')
     .fontSize(10)
-    .text('Valide la firma de este documento en:', { align: 'left' })
+    .text('Valide la autenticidad de este documento en:', { align: 'left' })
     .fontSize(9)
     .font('Courier-Bold')
     .text('https://mountainsoft.co/validate-document', {

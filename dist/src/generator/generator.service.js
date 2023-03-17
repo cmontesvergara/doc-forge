@@ -47,4 +47,4 @@ GeneratorService = __decorate([
     __metadata("design:paramtypes", [util_service_1.UtilService])
 ], GeneratorService);
 exports.GeneratorService = GeneratorService;
-//# sourceMappingURL=bill.service.js.map
+//# sourceMappingURL=generator.service.js.map

@@ -52,4 +52,4 @@ GeneratorController = __decorate([
     __metadata("design:paramtypes", [generator_service_1.GeneratorService])
 ], GeneratorController);
 exports.GeneratorController = GeneratorController;
-//# sourceMappingURL=bill.controller.js.map
+//# sourceMappingURL=generator.controller.js.map

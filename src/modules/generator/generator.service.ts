@@ -4,10 +4,10 @@ import { UtilService } from 'src/shared/services/util/util.service';
 import template from 'src/shared/templates';
 const fs = require('fs');
 @Injectable()
-export class BillService {
+export class GeneratorService {
   constructor(private readonly utilService: UtilService) {}
 
-  async generateBill(payload): Promise<any> {
+  async generatePdf(templateId, payload): Promise<any> {
     payload.amountInLetters = await this.utilService.getAmountInLetters(
       Number.parseInt(payload.amount.replace('.', '')),
     );
@@ -15,7 +15,7 @@ export class BillService {
       let writerStream;
       //=> FETCH TEMPLATE
       try {
-        const doc = template(payload.templateId, payload);
+        const doc = template(templateId, payload);
 
         //=> CREATION OF FILE IN STORAGE
         this.utilService.validateFolderCreation(

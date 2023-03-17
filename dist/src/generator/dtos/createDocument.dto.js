@@ -25,4 +25,4 @@ __decorate([
     __metadata("design:type", Object)
 ], createDocumentDTO.prototype, "documentData", void 0);
 exports.createDocumentDTO = createDocumentDTO;
-//# sourceMappingURL=createBill.dto.js.map
+//# sourceMappingURL=createDocument.dto.js.map
