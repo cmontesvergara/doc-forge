@@ -111,7 +111,7 @@ function t0000002199(payload) {
         .text('Firma de quien recibe:', { align: 'left' });
     doc
         .moveDown()
-        .image('public/img/table_accounts.png', {
+        .image('public/img/firma_carlosm.png', {
         scale: 0.3,
         align: 'left ',
     })

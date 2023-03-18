@@ -138,7 +138,7 @@ export function t0000002199(payload) {
   //=> INSERT ACCOUNTS IMAGE TABLE
   doc
     .moveDown()
-    .image('public/img/table_accounts.png', {
+    .image('public/img/firma_carlosm.png', {
       scale: 0.3,
       align: 'left ',
     })
