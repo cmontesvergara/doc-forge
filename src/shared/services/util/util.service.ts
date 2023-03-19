@@ -2,6 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
 import path from 'path';
+import crypto from 'crypto-js';
 const fs = require('fs');
 @Injectable()
 export class UtilService {
@@ -45,5 +46,22 @@ export class UtilService {
       nameFlat,
       'pdf',
     );
+  }
+
+  Encrypt(word: string) {
+    const encJson = crypto.AES.encrypt(
+      JSON.stringify(word),
+      process.env.CRYPTO_KEY,
+    ).toString();
+    const encData = crypto.enc.Base64.stringify(crypto.enc.Utf8.parse(encJson));
+    return encData;
+  }
+
+  Decrypt(word: string) {
+    const decData = crypto.enc.Base64.parse(word).toString(crypto.enc.Utf8);
+    const bytes = crypto.AES.decrypt(decData, process.env.CRYPTO_KEY).toString(
+      crypto.enc.Utf8,
+    );
+    return JSON.parse(bytes);
   }
 }

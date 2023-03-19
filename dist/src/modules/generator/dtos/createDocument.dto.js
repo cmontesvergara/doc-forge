@@ -19,6 +19,12 @@ __decorate([
     __metadata("design:type", String)
 ], createDocumentDTO.prototype, "templateId", void 0);
 __decorate([
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], createDocumentDTO.prototype, "docTimeOut", void 0);
+__decorate([
     (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsObject)(),
     (0, class_validator_1.IsNotEmptyObject)(),

@@ -11,4 +11,6 @@ export declare class UtilService {
         path: string;
         name: string;
     };
+    Encrypt(word: string): any;
+    Decrypt(word: string): any;
 }

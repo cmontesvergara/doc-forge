@@ -13,6 +13,7 @@ exports.UtilService = void 0;
 const common_1 = require("@nestjs/common");
 const axios_1 = __importDefault(require("axios"));
 const path_1 = __importDefault(require("path"));
+const crypto_js_1 = __importDefault(require("crypto-js"));
 const fs = require('fs');
 let UtilService = class UtilService {
     validateFolderCreation(path) {
@@ -39,6 +40,16 @@ let UtilService = class UtilService {
     }
     billPathFile(nameFlat) {
         return this.generatePathFile(this.billPathFolder(), 'bill', nameFlat, 'pdf');
+    }
+    Encrypt(word) {
+        const encJson = crypto_js_1.default.AES.encrypt(JSON.stringify(word), process.env.CRYPTO_KEY).toString();
+        const encData = crypto_js_1.default.enc.Base64.stringify(crypto_js_1.default.enc.Utf8.parse(encJson));
+        return encData;
+    }
+    Decrypt(word) {
+        const decData = crypto_js_1.default.enc.Base64.parse(word).toString(crypto_js_1.default.enc.Utf8);
+        const bytes = crypto_js_1.default.AES.decrypt(decData, process.env.CRYPTO_KEY).toString(crypto_js_1.default.enc.Utf8);
+        return JSON.parse(bytes);
     }
 };
 UtilService = __decorate([
