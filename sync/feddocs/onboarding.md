@@ -10,9 +10,10 @@ DocForge está pensado para ser consumido por otros microservicios o aplicacione
 
 ## Prerequisitos
 
-- **Node.js** ≥ 16
+- **Node.js** ≥ 20 (el Dockerfile usa `node:20-alpine`)
 - **npm** ≥ 8
 - Acceso al repositorio del proyecto
+- Conectividad a internet (requerida para la API externa `numerosaletras.com` que convierte montos a texto)
 - Un archivo `.env` configurado con las variables requeridas (ver sección de configuración)
 
 ## Setup Local
@@ -21,7 +22,7 @@ DocForge está pensado para ser consumido por otros microservicios o aplicacione
 
 ```sh
 git clone <url-del-repositorio>
-cd universalTemplate
+cd doc-forge
 ```
 
 ### 2. Instalar dependencias
@@ -32,16 +33,17 @@ npm install
 
 ### 3. Configurar variables de entorno
 
+El archivo `.env.example` existe pero está vacío. Debes crear el archivo `.env` manualmente en la raíz del proyecto con las siguientes variables:
+
 ```sh
-cp .env.example .env
+PORT=4400
+CRYPTO_KEY=<tu_clave_secreta_para_cifrado_AES>
 ```
 
-Edita el archivo `.env` y configura las siguientes variables:
-
-| Variable | Descripción | Ejemplo |
-|---|---|---|
-| `PORT` | Puerto en el que escucha el servicio | `4400` |
-| `CRYPTO_KEY` | Clave secreta para cifrado AES de rutas de descarga | `MiClaveSecretaSegura2026` |
+| Variable | Requerida | Descripción | Ejemplo |
+|---|---|---|---|
+| `PORT` | ❌ | Puerto en el que escucha el servicio. Si no se define, el fallback es `3000` | `4400` |
+| `CRYPTO_KEY` | ✅ | Clave secreta para cifrado AES de rutas de descarga. Sin esta variable, el endpoint `/api/generate/link` falla al cifrar | `MiClaveSecretaSegura2026` |
 
 ### 4. Ejecutar
 
@@ -49,7 +51,7 @@ Edita el archivo `.env` y configura las siguientes variables:
 npm run start:dev
 ```
 
-El servicio estará disponible en `http://localhost:4400`.
+El servicio estará disponible en `http://localhost:4400` (o `http://localhost:3000` si no se definió `PORT` en `.env`).
 
 ## Verificar que funciona
 
@@ -73,7 +75,7 @@ curl -X POST http://localhost:4400/api/generate/pdf \
       "date": "2026-03-03",
       "client": { "name": "Cliente Test", "docType": "NIT", "docNumber": "900123456" },
       "creditor": { "name": "Acreedor Test", "docType": "CC", "docNumber": "1234567890" },
-      "amount": "100.000",
+      "amount": "100000",
       "items": [{ "description": "Servicio de prueba" }],
       "signature": "abc123"
     }
@@ -86,10 +88,12 @@ Si se genera el archivo `test.pdf` correctamente, el setup fue exitoso.
 
 | Problema | Causa | Solución |
 |---|---|---|
-| `Error: ENOENT: no such file or directory, open 'public/img/header.png'` | Las imágenes del directorio `public/img/` no están presentes o la ruta de trabajo no es la raíz del proyecto | Asegúrate de ejecutar el servicio desde la raíz del repositorio (`universalTemplate/`) y verifica que la carpeta `public/img/` existe con los archivos `header.png`, `footer.png` y `firma_carlosm.png` |
+| `Error: ENOENT: no such file or directory, open 'public/img/header.png'` | Las imágenes del directorio `public/img/` no están presentes o el proceso no se ejecuta desde la raíz del proyecto | Asegúrate de ejecutar el servicio desde la raíz del repositorio (`doc-forge/`) y verifica que `public/img/` contiene: `header.png`, `footer.png`, `firma_carlosm.png` y `table_accounts.png` |
 | `Error: Cannot find module 'pdfkit'` | Las dependencias no se instalaron correctamente | Ejecuta `npm install` nuevamente. Si persiste, elimina `node_modules/` y `package-lock.json` y vuelve a instalar |
-| `CRYPTO_KEY undefined` al generar links de descarga | Falta la variable de entorno `CRYPTO_KEY` en el archivo `.env` | Copia `.env.example` a `.env` y agrega `CRYPTO_KEY=<tu_clave_secreta>` |
-| El servicio no arranca en el puerto esperado | La variable `PORT` no está definida o hay conflicto de puertos | Verifica que `PORT` esté en tu `.env` y que ningún otro proceso esté usando ese puerto |
+| `CRYPTO_KEY undefined` al generar links de descarga | Falta la variable de entorno `CRYPTO_KEY` en el archivo `.env` | Crea el archivo `.env` y agrega `CRYPTO_KEY=<tu_clave_secreta>`. El archivo `.env.example` está vacío y no sirve como referencia |
+| El servicio arranca en puerto 3000 en vez de 4400 | La variable `PORT` no está definida en `.env`. El fallback en `main.ts` es `process.env.PORT \|\| 3000` | Agrega `PORT=4400` a tu archivo `.env` |
+| `Cannot read properties of undefined (reading 'replace')` al generar PDF | Falta el campo `amount` en `documentData`. El servicio procesa este campo antes de invocar el template | Incluir siempre `amount` como string en `documentData`, incluso para el template `t0000002000` |
+| Timeout al generar PDF | La API externa `numerosaletras.com` no es alcanzable | Verificar conectividad a internet. Todas las generaciones de PDF dependen de esta API para convertir montos a texto |
 
 ## Canales de Soporte
 

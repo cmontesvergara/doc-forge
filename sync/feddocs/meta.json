@@ -1,11 +1,11 @@
 {
     "name": "DocForge",
-    "description": "Microservicio de generación de documentos PDF con templates PdfKit parametrizados",
+    "description": "Microservicio NestJS de generación de documentos PDF financieros con PdfKit y enlaces cifrados AES",
     "project": "doc-forge",
     "ownerTeam": "core-team",
     "techLead": "lead@bigso.co",
     "supportChannel": "#core-team",
     "lifecycle": "active",
-    "version": "1.0.0",
+    "version": "0.0.1",
     "lastReviewed": "2026-03-03"
 }

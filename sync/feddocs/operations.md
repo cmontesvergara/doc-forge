@@ -4,16 +4,27 @@
 
 ### Pipeline CI/CD
 
-DocForge se despliega mediante CapRover, que construye la imagen Docker automáticamente al hacer push al repositorio conectado. El Dockerfile usa un build multi-stage para optimizar el tamaño de la imagen de producción.
+DocForge se despliega mediante CapRover, que construye la imagen Docker automáticamente al hacer push al repositorio conectado. El proyecto incluye un archivo `captain-definition` (con `schemaVersion: 2`) que apunta al `Dockerfile` en la raíz. El Dockerfile usa un build multi-stage con `node:20-alpine`.
 
 ```mermaid
 graph LR
     A[Push a main] --> B[CapRover detecta cambios]
-    B --> C[Docker Build - Stage 1: Builder]
-    C --> D[npm ci + npm run build]
-    D --> E[Docker Build - Stage 2: Production]
-    E --> F[Deploy automático]
+    B --> C["Docker Build Stage 1: builder (node:20-alpine)"]
+    C --> D[npm ci]
+    D --> E[npm run build]
+    E --> F[npm prune --production]
+    F --> G["Docker Build Stage 2: production (node:20-alpine)"]
+    G --> H["Copia: dist/, node_modules/, public/, package*.json"]
+    H --> I["CMD: node dist/src/main"]
+    I --> J[Deploy automático]
 ```
+
+**Detalle del Dockerfile multi-stage:**
+
+- **Stage 1 (builder):** Instala dependencias con `npm ci`, compila TypeScript con `npm run build`, y ejecuta `npm prune --production` para eliminar devDependencies.
+- **Stage 2 (production):** Copia solo los artefactos necesarios del builder: `package*.json`, `node_modules/`, `dist/`, y `public/`. Ejecuta `node dist/src/main`.
+- El directorio `client/` y `src/` NO se copian al contenedor de producción.
+- Los archivos Poppins TTF en `src/assets/fonts/` se compilan al `dist/` pero no son usados por los templates (usan Courier built-in de PdfKit).
 
 ### Deploy Manual
 
@@ -37,33 +48,39 @@ Para deploy sin Docker:
 ```sh
 npm install
 npm run build
-NODE_ENV=production node dist/src/main
+PORT=4400 CRYPTO_KEY=<tu_clave_secreta> node dist/src/main
 ```
+
+El script `start:prod` en `package.json` está definido como `node dist/main`, pero la ruta real del entry point compilado es `dist/src/main` (como se confirma en el Dockerfile). Usar directamente `node dist/src/main` para evitar errores.
 
 ## Variables de Entorno
 
 | Variable | Requerida | Descripción | Ejemplo |
 |---|---|---|---|
-| `PORT` | ✅ | Puerto TCP en el que escucha el servicio HTTP | `4400` |
-| `CRYPTO_KEY` | ✅ | Clave secreta para cifrado/descifrado AES de rutas de archivos PDF temporales | `MiClaveSecretaSegura2026` |
-| `NODE_ENV` | ❌ | Entorno de ejecución. CapRover lo establece en `production` automáticamente | `production` |
+| `PORT` | ❌ | Puerto TCP en el que escucha el servicio HTTP. Si no se define, el fallback en `main.ts` es `3000` | `4400` |
+| `CRYPTO_KEY` | ✅ | Clave secreta para cifrado/descifrado AES de rutas de archivos PDF temporales. Sin esta variable, el endpoint `/api/generate/link` falla | `MiClaveSecretaSegura2026` |
+| `NODE_ENV` | ❌ | Entorno de ejecución. El Dockerfile lo establece como `build` en stage 1 y `production` en stage 2 | `production` |
+
+El archivo `.env.example` del repositorio está vacío. Las variables deben configurarse manualmente en `.env` o como variables de entorno del sistema/contenedor.
 
 ## Monitoreo
 
 | Métrica | Dashboard | Umbral de Alerta |
 |---|---|---|
 | Uso de disco en `pdfs/bills/` | Monitoreo del host / CapRover | Alertar si el directorio supera 500 MB (indica que la limpieza automática de archivos no está funcionando) |
-| Tiempo de respuesta de `/api/generate/pdf` | Logs del servidor / CapRover | Alertar si supera 10 segundos (puede indicar problemas con la API externa numerosaletras.com) |
-| Disponibilidad del servicio | CapRover health check | Alertar si el endpoint raíz (`GET /`) no responde con 200 |
+| Tiempo de respuesta de `/api/generate/pdf` | Logs del servidor / CapRover | Alertar si supera 10 segundos (puede indicar problemas con la API externa `numerosaletras.com`) |
+| Disponibilidad del servicio | CapRover health check | Alertar si `GET /` no responde con 200 OK y texto `Hello World!` |
+| Conectividad a `numerosaletras.com` | Monitoreo de red | Alertar si la API no responde (bloquea toda generación de PDF) |
 
 ## Alertas
 
 | Alerta | Severidad | Causa Probable | Acción |
 |---|---|---|---|
-| Servicio no responde en puerto 4400 | Alta | El contenedor se detuvo o el proceso Node.js crasheó | Verificar logs del contenedor con `docker logs docforge`. Reiniciar con `docker restart docforge` o re-deploy desde CapRover |
-| Error ENOENT en generación de PDF | Alta | Faltan imágenes en `public/img/` (header.png, footer.png, firma) | Verificar que el directorio `public/` se copió correctamente en el build Docker. Revisar el Dockerfile |
-| Timeout en conversión de monto a letras | Media | La API externa `numerosaletras.com` no responde | Verificar conectividad de red del contenedor. Si persiste, considerar implementar la conversión localmente |
-| Acumulación de archivos PDF en disco | Media | El `setTimeout` para eliminación de archivos no se ejecutó (proceso reiniciado antes del timeout) | Limpiar manualmente el directorio `pdfs/bills/` y verificar que los timeouts de eliminación están funcionando |
+| Servicio no responde en el puerto configurado | Alta | El contenedor se detuvo o el proceso Node.js crasheó | Verificar logs: `docker logs docforge`. Reiniciar: `docker restart docforge` o re-deploy desde CapRover |
+| Error ENOENT en generación de PDF | Alta | Faltan imágenes en `public/img/` (`header.png`, `footer.png`, `firma_carlosm.png`, `table_accounts.png`) | Verificar que `public/` se copió correctamente en el build Docker (el Dockerfile incluye `COPY --from=builder /home/node/public/ ./public/`) |
+| Timeout en conversión de monto a letras | Media | La API externa `http://numerosaletras.com` no responde. Bloquea TODA generación de PDF | Verificar conectividad de red del contenedor hacia internet. No hay timeout configurado en la llamada axios |
+| Acumulación de archivos PDF en disco | Media | El `setTimeout` para eliminación de archivos no se ejecutó (proceso reiniciado antes del timeout) | Limpiar manualmente `pdfs/bills/` dentro del contenedor y reiniciar el servicio |
+| Error `Cannot read properties of undefined` | Media | Un request llegó sin campo `amount` en `documentData` | Revisar la integración del cliente consumidor para que siempre envíe `amount` |
 
 ## Rollback
 
@@ -79,7 +96,7 @@ docker build -t docforge:rollback .
 docker stop docforge
 docker rm docforge
 
-# 4. Levantar la versión anterior
+# 4. Levantar la versión anterior (usar la misma CRYPTO_KEY para que los links existentes sigan funcionando)
 docker run -d \
   --name docforge \
   -p 4400:4400 \
@@ -93,7 +110,7 @@ curl http://localhost:4400
 # 6. Verificar generación de PDF
 curl -X POST http://localhost:4400/api/generate/pdf \
   -H "Content-Type: application/json" \
-  -d '{"templateId":"t0000002199","documentData":{"documentId":"ROLLBACK-TEST","date":"test","client":{"name":"Test","docType":"CC","docNumber":"123"},"creditor":{"name":"Test","docType":"CC","docNumber":"456"},"amount":"1.000","items":[{"description":"Test"}],"signature":"test"}}' \
+  -d '{"templateId":"t0000002199","documentData":{"documentId":"ROLLBACK-TEST","date":"test","client":{"name":"Test","docType":"CC","docNumber":"123"},"creditor":{"name":"Test","docType":"CC","docNumber":"456"},"amount":"1000","items":[{"description":"Test"}],"signature":"test"}}' \
   --output rollback-test.pdf
 ```
 
@@ -101,6 +118,6 @@ curl -X POST http://localhost:4400/api/generate/pdf \
 
 | Incidente | Síntoma | Runbook |
 |---|---|---|
-| PDFs no se generan | El endpoint `/api/generate/pdf` retorna 400 o timeout | 1. Revisar logs del contenedor. 2. Verificar que las imágenes en `public/img/` existen. 3. Probar con un templateId válido. 4. Verificar conectividad a `numerosaletras.com` |
-| Links de descarga no funcionan | El endpoint `/api/generate/download/:path` retorna 404 o 400 | 1. Verificar que `CRYPTO_KEY` no cambió entre deploys. 2. Verificar que el archivo no expiró (revisar `docTimeOut`). 3. Comprobar que el directorio `pdfs/bills/` tiene permisos de escritura |
-| Disco lleno en producción | El contenedor se queda sin espacio y falla al escribir PDFs | 1. Listar archivos en `pdfs/bills/` dentro del contenedor. 2. Eliminar archivos huérfanos manualmente. 3. Reiniciar el servicio para restablecer los timers de limpieza |
+| PDFs no se generan | El endpoint `/api/generate/pdf` retorna 400 con mensaje de error | 1. Revisar logs del contenedor. 2. Si dice `Cannot read properties of undefined (reading 'replace')`: falta `amount` en el payload. 3. Si dice `is not a function`: templateId inválido. 4. Si hay timeout: verificar conectividad a `numerosaletras.com`. 5. Si dice `ENOENT`: verificar imágenes en `public/img/` |
+| Links de descarga no funcionan | El endpoint `/api/generate/download/:path` retorna 404 o 400 | 1. 404 "File Not Found": el archivo expiró (revisar `docTimeOut`, default 200000ms). 2. 400 con error de descifrado: `CRYPTO_KEY` cambió entre deploys o el path está truncado. 3. Verificar permisos de escritura en `pdfs/bills/` |
+| Disco lleno en producción | El contenedor se queda sin espacio y falla al escribir PDFs | 1. Listar archivos: `docker exec docforge ls -la pdfs/bills/`. 2. Eliminar archivos huérfanos. 3. Reiniciar el servicio para restablecer los timers de limpieza |
