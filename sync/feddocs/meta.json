@@ -1,0 +1,11 @@
+{
+    "name": "DocForge",
+    "description": "Microservicio de generación de documentos PDF con templates PdfKit parametrizados",
+    "project": "doc-forge",
+    "ownerTeam": "core-team",
+    "techLead": "lead@bigso.co",
+    "supportChannel": "#core-team",
+    "lifecycle": "active",
+    "version": "1.0.0",
+    "lastReviewed": "2026-03-03"
+}
