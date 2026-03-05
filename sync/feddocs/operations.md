@@ -37,8 +37,8 @@ docker build -t docforge:latest .
 # Ejecutar el contenedor
 docker run -d \
   --name docforge \
-  -p 4400:4400 \
-  -e PORT=4400 \
+  -p 4400:3000 \
+  -e PORT=3000 \
   -e CRYPTO_KEY=<tu_clave_secreta> \
   docforge:latest
 ```
@@ -48,7 +48,7 @@ Para deploy sin Docker:
 ```sh
 npm install
 npm run build
-PORT=4400 CRYPTO_KEY=<tu_clave_secreta> node dist/src/main
+PORT=3000 CRYPTO_KEY=<tu_clave_secreta> node dist/src/main
 ```
 
 El script `start:prod` en `package.json` está definido como `node dist/main`, pero la ruta real del entry point compilado es `dist/src/main` (como se confirma en el Dockerfile). Usar directamente `node dist/src/main` para evitar errores.
@@ -57,7 +57,7 @@ El script `start:prod` en `package.json` está definido como `node dist/main`, p
 
 | Variable | Requerida | Descripción | Ejemplo |
 |---|---|---|---|
-| `PORT` | ❌ | Puerto TCP en el que escucha el servicio HTTP. Si no se define, el fallback en `main.ts` es `3000` | `4400` |
+| `PORT` | ❌ | Puerto TCP en el que escucha el servicio HTTP. Actualmente hardcodeado a `3000` en `main.ts` | `3000` |
 | `CRYPTO_KEY` | ✅ | Clave secreta para cifrado/descifrado AES de rutas de archivos PDF temporales. Sin esta variable, el endpoint `/api/generate/link` falla | `MiClaveSecretaSegura2026` |
 | `NODE_ENV` | ❌ | Entorno de ejecución. El Dockerfile lo establece como `build` en stage 1 y `production` en stage 2 | `production` |
 
@@ -68,17 +68,16 @@ El archivo `.env.example` del repositorio está vacío. Las variables deben conf
 | Métrica | Dashboard | Umbral de Alerta |
 |---|---|---|
 | Uso de disco en `pdfs/bills/` | Monitoreo del host / CapRover | Alertar si el directorio supera 500 MB (indica que la limpieza automática de archivos no está funcionando) |
-| Tiempo de respuesta de `/api/generate/pdf` | Logs del servidor / CapRover | Alertar si supera 10 segundos (puede indicar problemas con la API externa `numerosaletras.com`) |
+| Tiempo de respuesta de `/api/generate/pdf` | Logs del servidor / CapRover | Alertar si supera 5 segundos (puede indicar carga excesiva o problemas de disco) |
 | Disponibilidad del servicio | CapRover health check | Alertar si `GET /` no responde con 200 OK y texto `Hello World!` |
-| Conectividad a `numerosaletras.com` | Monitoreo de red | Alertar si la API no responde (bloquea toda generación de PDF) |
+| Conectividad del servicio | Monitoreo de red | Alertar si el contenedor no puede resolver DNS o alcanzar dependencias internas |
 
 ## Alertas
 
 | Alerta | Severidad | Causa Probable | Acción |
 |---|---|---|---|
 | Servicio no responde en el puerto configurado | Alta | El contenedor se detuvo o el proceso Node.js crasheó | Verificar logs: `docker logs docforge`. Reiniciar: `docker restart docforge` o re-deploy desde CapRover |
-| Error ENOENT en generación de PDF | Alta | Faltan imágenes en `public/img/` (`header.png`, `footer.png`, `firma_carlosm.png`, `table_accounts.png`) | Verificar que `public/` se copió correctamente en el build Docker (el Dockerfile incluye `COPY --from=builder /home/node/public/ ./public/`) |
-| Timeout en conversión de monto a letras | Media | La API externa `http://numerosaletras.com` no responde. Bloquea TODA generación de PDF | Verificar conectividad de red del contenedor hacia internet. No hay timeout configurado en la llamada axios |
+| Error ENOENT en generación de PDF | Alta | Faltan imágenes en `public/img/` (solo afecta templates legacy `t0000002XXX`). Los templates Ordamy `t0000003XXX` no usan imágenes | Verificar que `public/` se copió correctamente en el build Docker |
 | Acumulación de archivos PDF en disco | Media | El `setTimeout` para eliminación de archivos no se ejecutó (proceso reiniciado antes del timeout) | Limpiar manualmente `pdfs/bills/` dentro del contenedor y reiniciar el servicio |
 | Error `Cannot read properties of undefined` | Media | Un request llegó sin campo `amount` en `documentData` | Revisar la integración del cliente consumidor para que siempre envíe `amount` |
 
@@ -99,8 +98,8 @@ docker rm docforge
 # 4. Levantar la versión anterior (usar la misma CRYPTO_KEY para que los links existentes sigan funcionando)
 docker run -d \
   --name docforge \
-  -p 4400:4400 \
-  -e PORT=4400 \
+  -p 4400:3000 \
+  -e PORT=3000 \
   -e CRYPTO_KEY=<misma_clave> \
   docforge:rollback
 

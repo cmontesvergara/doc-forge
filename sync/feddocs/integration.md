@@ -39,7 +39,7 @@ Si un campo requerido falta o tiene un tipo incorrecto, NestJS retorna un error 
 Verifica que el servicio está activo. Retorna un texto plano.
 
 ```sh
-curl http://localhost:4400
+curl http://localhost:3000
 ```
 
 **Response (200):**
@@ -60,14 +60,14 @@ Genera un documento PDF a partir de un template y datos proporcionados, y lo ret
 
 | Campo | Tipo | Requerido | Descripción |
 |---|---|---|---|
-| `templateId` | `string` | ✅ | ID del template. Debe ser uno de: `t0000002198`, `t0000002199`, `t0000002000` |
+| `templateId` | `string` | ✅ | ID del template. Debe ser uno de: `t0000002198`, `t0000002199`, `t0000002000`, `t0000003000`, `t0000003001`, `t0000003002`, `t0000003003` |
 | `documentData` | `object` | ✅ | Objeto con los datos del documento. No puede ser vacío |
 | `docTimeOut` | `number` | ❌ | No se usa en este endpoint (solo aplica para `/api/generate/link`) |
 
 **Ejemplo completo de request para cuenta de cobro (`t0000002198`):**
 
 ```sh
-curl -X POST http://localhost:4400/api/generate/pdf \
+curl -X POST http://localhost:3000/api/generate/pdf \
   -H "Content-Type: application/json" \
   -d '{
     "templateId": "t0000002198",
@@ -103,10 +103,9 @@ El servidor retorna el archivo PDF directamente con header `Content-Type: applic
 | Código | Cuándo ocurre | Mensaje |
 |---|---|---|
 | 400 | Falta `templateId` o `documentData` en el body | Array de mensajes de validación del DTO |
-| 400 | El `templateId` no corresponde a un template registrado (`t0000002198`, `t0000002199`, `t0000002000`) | `alltemplates[templateId] is not a function` |
+| 400 | El `templateId` no corresponde a un template registrado | `alltemplates[templateId] is not a function` |
 | 400 | Falta el campo `amount` dentro de `documentData` | `Cannot read properties of undefined (reading 'replace')` |
-| 400 | La API externa `numerosaletras.com` no responde o no es alcanzable | Error de red / timeout de axios |
-| 400 | Faltan imágenes en `public/img/` (header.png, footer.png, etc.) | `ENOENT: no such file or directory` |
+| 400 | Faltan imágenes en `public/img/` (solo templates legacy `t0000002XXX`) | `ENOENT: no such file or directory` |
 
 ---
 
@@ -120,14 +119,14 @@ Genera el PDF en disco y retorna un enlace temporal cifrado con AES para descarg
 
 | Campo | Tipo | Requerido | Descripción |
 |---|---|---|---|
-| `templateId` | `string` | ✅ | ID del template. Debe ser uno de: `t0000002198`, `t0000002199`, `t0000002000` |
+| `templateId` | `string` | ✅ | ID del template. Debe ser uno de: `t0000002198`, `t0000002199`, `t0000002000`, `t0000003000`, `t0000003001`, `t0000003002`, `t0000003003` |
 | `documentData` | `object` | ✅ | Objeto con los datos del documento. No puede ser vacío |
 | `docTimeOut` | `number` | ❌ | Tiempo de vida del archivo en milisegundos. **Default: 200000** (200 segundos ≈ 3.3 minutos) |
 
 **Ejemplo de request:**
 
 ```sh
-curl -X POST http://localhost:4400/api/generate/link \
+curl -X POST http://localhost:3000/api/generate/link \
   -H "Content-Type: application/json" \
   -d '{
     "templateId": "t0000002199",
@@ -183,7 +182,7 @@ Descarga un PDF previamente generado usando el enlace cifrado obtenido del endpo
 El parámetro `:path` es el valor de `pathFile` retornado por `/api/generate/link`.
 
 ```sh
-curl http://localhost:4400/api/generate/download/U2FsdGVkX1+abc123encryptedPathBase64== \
+curl http://localhost:3000/api/generate/download/U2FsdGVkX1+abc123encryptedPathBase64== \
   --output documento.pdf
 ```
 
@@ -200,36 +199,36 @@ Retorna el archivo PDF con header `Content-Type: application/pdf`.
 
 ---
 
-## Formato del campo `amount` — Comportamiento crítico
-
 El campo `amount` dentro de `documentData` es **obligatorio para todos los templates** porque el servicio llama a `getAmountInLetters()` antes de evaluar cualquier template. Este procesamiento ocurre en `GeneratorService.generatePdf()`:
 
 ```typescript
-payload.amountInLetters = await this.utilService.getAmountInLetters(
-  Number.parseInt(payload.amount.replace('.', '')),
+payload.amountInLetters = this.utilService.getAmountInLetters(
+  Number.parseInt(payload.amount.replace(/\./g, '')),
 );
 ```
 
-El método `.replace('.', '')` de JavaScript solo elimina **la primera ocurrencia** del punto. Esto tiene implicaciones directas en cómo enviar el campo `amount`:
+El método `.replace(/\./g, '')` elimina **todos** los separadores de miles (puntos). La conversión a letras se realiza con una función local síncrona (no depende de APIs externas).
 
-| Valor de `amount` enviado | Resultado de `replace('.', '')` | `parseInt()` produce | ¿Correcto? |
+| Valor de `amount` enviado | Resultado de `replace(/\./g, '')` | `parseInt()` produce | ¿Correcto? |
 |---|---|---|---|
 | `"1500000"` | `"1500000"` | `1500000` | ✅ Correcto |
-| `"1.500.000"` | `"1500.000"` | `1500` | ❌ Incorrecto — solo quita el primer punto |
-| `"750.000"` | `"750000"` | `750000` | ✅ Correcto — solo tiene un punto |
+| `"1.500.000"` | `"1500000"` | `1500000` | ✅ Correcto |
+| `"750.000"` | `"750000"` | `750000` | ✅ Correcto |
 | `"100000"` | `"100000"` | `100000` | ✅ Correcto |
 
-**Recomendación:** Para montos superiores a 999.999, enviar el campo `amount` **sin separadores de miles** (ej: `"1500000"` en vez de `"1.500.000"`) para evitar errores en la conversión a letras. Para montos con un solo separador (ej: `"750.000"`) funciona correctamente.
+El campo `amount` se puede enviar con o sin separadores de miles. La conversión a letras funciona correctamente en ambos casos.
 
-Sin embargo, el valor de `amount` también se usa directamente en los templates para mostrar el monto formateado en el PDF (ej: `$1.500.000`). Para que el monto se muestre formateado en el PDF pero la conversión a letras sea correcta, enviar un monto **sin puntos** resultará en que el PDF mostrará `$1500000` sin formato. Esto es una limitación del diseño actual.
+Sin embargo, el valor de `amount` también se usa directamente en algunos templates para mostrar el monto formateado en el PDF (ej: `$1.500.000`). Si se envía sin puntos, el PDF mostrará `$1500000` sin formato. Considerar enviar el monto formateado si el template lo muestra directamente.
 
-## Templates Disponibles
-
-| Template ID | Tipo de Documento | Descripción |
-|---|---|---|
-| `t0000002198` | Cuenta de cobro | Documento de cobro con header, datos del cliente, acreedor, monto en números y letras, lista de conceptos, tabla de cuentas bancarias (`table_accounts.png`), firma de seguridad y paginación |
-| `t0000002199` | Recibo de pago | Comprobante de pago con header, datos del pagador, receptor, monto en números y letras, lista de conceptos, firma digital (`firma_carlosm.png`), firma de seguridad y paginación |
-| `t0000002000` | Constancia | Certificación con header. Solo muestra datos del acreedor/emisor (`creditor`), lista de items con texto justificado, y firma digital. **No renderiza** título "CONSTANCIA", datos del cliente, ni monto en el PDF (estas secciones están desactivadas en el template) |
+| Template ID | Tipo de Documento | Familia | Descripción |
+|---|---|---|---|
+| `t0000002198` | Cuenta de cobro | Legacy | Documento de cobro con imágenes header/footer, datos del cliente/acreedor, monto, lista de conceptos, tabla de cuentas bancarias (`table_accounts.png`) |
+| `t0000002199` | Recibo de pago | Legacy | Comprobante de pago con imágenes header/footer, datos del pagador/receptor, monto, lista de conceptos, firma digital (`firma_carlosm.png`) |
+| `t0000002000` | Constancia | Legacy | Certificación con imágenes. Solo muestra acreedor, items y firma. Título, cliente y monto están desactivados |
+| `t0000003000` | Voucher de producción | Ordamy | Voucher para producción sin datos monetarios. Muestra `companyName` prominente, orden #, fecha, fecha límite, cliente, items (descripción + cantidad), notas, vendedor |
+| `t0000003001` | Cuenta de cobro | Ordamy | Cuenta de cobro con todos los datos financieros: items con precios, subtotal/descuento/IVA/total, monto en letras, saldo pendiente, firma |
+| `t0000003002` | Corte diario | Ordamy | Reporte financiero diario: resumen (ingresos/egresos/neto/órdenes), ingresos y egresos por medio de pago, detalle de pagos, detalle de egresos |
+| `t0000003003` | Corte mensual | Ordamy | Reporte financiero mensual: resumen con órdenes (cantidad + total), ingresos y egresos por medio de pago, egresos por categoría |
 
 ## Campos de `documentData` por Template
 
@@ -272,11 +271,10 @@ Los campos `client.name`, `client.docType`, `client.docNumber` y `amountInLetter
 
 | Problema | Causa | Solución |
 |---|---|---|
-| `Cannot read properties of undefined (reading 'replace')` | Falta el campo `amount` en `documentData`. El servicio llama `payload.amount.replace(...)` antes de evaluar cualquier template | Incluir siempre el campo `amount` como string en `documentData`, incluso para el template `t0000002000` que no lo muestra |
-| `alltemplates[templateId] is not a function` | El `templateId` no corresponde a ningún template registrado | Usar exactamente uno de: `t0000002198`, `t0000002199`, `t0000002000` |
+| `Cannot read properties of undefined (reading 'replace')` | Falta el campo `amount` en `documentData`. El servicio llama `payload.amount.replace(...)` antes de evaluar cualquier template | Incluir siempre el campo `amount` como string en `documentData`, incluso para templates que no lo muestran |
+| `alltemplates[templateId] is not a function` | El `templateId` no corresponde a ningún template registrado | Usar exactamente uno de: `t0000002198`, `t0000002199`, `t0000002000`, `t0000003000`, `t0000003001`, `t0000003002`, `t0000003003` |
 | Error 400 con array de mensajes de validación | El body no pasa la validación del DTO | Verificar: `templateId` (string, no vacío), `documentData` (objeto, no vacío). Si se envía `docTimeOut` debe ser número |
-| Timeout o error de red al generar PDF | La API externa `http://numerosaletras.com` no responde. Todas las generaciones de PDF dependen de esta API | Verificar conectividad a internet del servidor. Si la API está caída, la generación de PDF falla completamente |
-| `ENOENT: no such file or directory, open 'public/img/header.png'` | Las imágenes del directorio `public/img/` no están presentes o el proceso no se ejecuta desde la raíz del proyecto | Verificar que `public/img/` contiene: `header.png`, `footer.png`, `firma_carlosm.png`, `table_accounts.png` |
+| `ENOENT: no such file or directory, open 'public/img/header.png'` | Las imágenes del directorio `public/img/` no están presentes. Solo afecta a templates legacy (`t0000002XXX`) | Verificar que `public/img/` contiene: `header.png`, `footer.png`, `firma_carlosm.png`, `table_accounts.png`. Los templates Ordamy (`t0000003XXX`) no necesitan imágenes |
 | Link de descarga retorna `File Not Found` (404) | El archivo PDF ya expiró y fue eliminado del disco | Generar un nuevo PDF. Considerar aumentar `docTimeOut` (default: 200000 ms) |
 | Error de descifrado en endpoint download | La variable `CRYPTO_KEY` cambió entre la generación del link y la descarga, o el parámetro path está corrupto/truncado | Asegurar que `CRYPTO_KEY` sea constante entre deploys. Verificar que el valor de `pathFile` se pase completo (sin truncar caracteres especiales en la URL) |
 | Response vacía o el PDF se descarga con 0 bytes | El `sendFile()` puede fallar si la ruta generada no es absoluta en ciertos entornos | Reportar al equipo. El servicio genera la ruta usando `path.join(__dirname, ...)` que debería ser absoluta |

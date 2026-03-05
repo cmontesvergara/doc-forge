@@ -13,7 +13,6 @@ DocForge está pensado para ser consumido por otros microservicios o aplicacione
 - **Node.js** ≥ 20 (el Dockerfile usa `node:20-alpine`)
 - **npm** ≥ 8
 - Acceso al repositorio del proyecto
-- Conectividad a internet (requerida para la API externa `numerosaletras.com` que convierte montos a texto)
 - Un archivo `.env` configurado con las variables requeridas (ver sección de configuración)
 
 ## Setup Local
@@ -42,7 +41,7 @@ CRYPTO_KEY=<tu_clave_secreta_para_cifrado_AES>
 
 | Variable | Requerida | Descripción | Ejemplo |
 |---|---|---|---|
-| `PORT` | ❌ | Puerto en el que escucha el servicio. Si no se define, el fallback es `3000` | `4400` |
+| `PORT` | ❌ | Puerto en el que escucha el servicio. Actualmente hardcodeado a `3000` en `main.ts` | `3000` |
 | `CRYPTO_KEY` | ✅ | Clave secreta para cifrado AES de rutas de descarga. Sin esta variable, el endpoint `/api/generate/link` falla al cifrar | `MiClaveSecretaSegura2026` |
 
 ### 4. Ejecutar
@@ -51,14 +50,14 @@ CRYPTO_KEY=<tu_clave_secreta_para_cifrado_AES>
 npm run start:dev
 ```
 
-El servicio estará disponible en `http://localhost:4400` (o `http://localhost:3000` si no se definió `PORT` en `.env`).
+El servicio estará disponible en `http://localhost:3000`.
 
 ## Verificar que funciona
 
 Ejecuta el siguiente comando para verificar que el servicio responde correctamente:
 
 ```sh
-curl http://localhost:4400
+curl http://localhost:3000
 ```
 
 Deberías recibir como respuesta el texto `Hello World!`. Esto confirma que el servidor NestJS está levantado y sirviendo requests.
@@ -66,7 +65,7 @@ Deberías recibir como respuesta el texto `Hello World!`. Esto confirma que el s
 Para probar la generación de PDF, envía un request al endpoint principal:
 
 ```sh
-curl -X POST http://localhost:4400/api/generate/pdf \
+curl -X POST http://localhost:3000/api/generate/pdf \
   -H "Content-Type: application/json" \
   -d '{
     "templateId": "t0000002199",
@@ -91,9 +90,8 @@ Si se genera el archivo `test.pdf` correctamente, el setup fue exitoso.
 | `Error: ENOENT: no such file or directory, open 'public/img/header.png'` | Las imágenes del directorio `public/img/` no están presentes o el proceso no se ejecuta desde la raíz del proyecto | Asegúrate de ejecutar el servicio desde la raíz del repositorio (`doc-forge/`) y verifica que `public/img/` contiene: `header.png`, `footer.png`, `firma_carlosm.png` y `table_accounts.png` |
 | `Error: Cannot find module 'pdfkit'` | Las dependencias no se instalaron correctamente | Ejecuta `npm install` nuevamente. Si persiste, elimina `node_modules/` y `package-lock.json` y vuelve a instalar |
 | `CRYPTO_KEY undefined` al generar links de descarga | Falta la variable de entorno `CRYPTO_KEY` en el archivo `.env` | Crea el archivo `.env` y agrega `CRYPTO_KEY=<tu_clave_secreta>`. El archivo `.env.example` está vacío y no sirve como referencia |
-| El servicio arranca en puerto 3000 en vez de 4400 | La variable `PORT` no está definida en `.env`. El fallback en `main.ts` es `process.env.PORT \|\| 3000` | Agrega `PORT=4400` a tu archivo `.env` |
-| `Cannot read properties of undefined (reading 'replace')` al generar PDF | Falta el campo `amount` en `documentData`. El servicio procesa este campo antes de invocar el template | Incluir siempre `amount` como string en `documentData`, incluso para el template `t0000002000` |
-| Timeout al generar PDF | La API externa `numerosaletras.com` no es alcanzable | Verificar conectividad a internet. Todas las generaciones de PDF dependen de esta API para convertir montos a texto |
+| El servicio arranca en puerto 3000 | El puerto está hardcodeado en `main.ts` como `3000` | Si necesitas otro puerto, modifica `main.ts` directamente |
+| `Cannot read properties of undefined (reading 'replace')` al generar PDF | Falta el campo `amount` en `documentData`. El servicio procesa este campo antes de invocar el template | Incluir siempre `amount` como string en `documentData`, incluso para templates que no lo muestran |
 
 ## Canales de Soporte
 
