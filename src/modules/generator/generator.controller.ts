@@ -9,7 +9,7 @@ export class GeneratorController {
   constructor(
     private generatorService: GeneratorService,
     private utilService: UtilService,
-  ) {}
+  ) { }
 
   @Post('pdf')
   async invoiceIndex(
@@ -21,6 +21,7 @@ export class GeneratorController {
         body.templateId,
         body.documentData,
       );
+      console.log(file);
       res.set({
         'Content-Type': 'application/pdf',
       });

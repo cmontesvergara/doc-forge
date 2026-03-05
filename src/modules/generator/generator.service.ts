@@ -5,11 +5,11 @@ import template from 'src/shared/templates';
 const fs = require('fs');
 @Injectable()
 export class GeneratorService {
-  constructor(private readonly utilService: UtilService) {}
+  constructor(private readonly utilService: UtilService) { }
 
   async generatePdf(templateId, payload): Promise<any> {
-    payload.amountInLetters = await this.utilService.getAmountInLetters(
-      Number.parseInt(payload.amount.replace('.', '')),
+    payload.amountInLetters = this.utilService.getAmountInLetters(
+      Number.parseInt(payload.amount.replace(/\./g, '')),
     );
     const pdfBuffer = await new Promise((resolve, reject) => {
       let writerStream;
