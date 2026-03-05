@@ -1,0 +1,718 @@
+openapi: 3.0.3
+info:
+  title: DocForge API
+  description: |
+    Microservicio NestJS de generación de documentos PDF financieros con PdfKit y enlaces cifrados AES.
+
+    ## Flujo General
+    1. Enviar un POST con `templateId` y `documentData` a `/api/generate/pdf` o `/api/generate/link`
+    2. El servicio convierte `amount` a texto en español (función local), genera el PDF con PdfKit y lo almacena temporalmente en disco
+    3. El PDF se retorna como descarga directa o como un enlace temporal cifrado con AES
+
+    ## Templates Disponibles
+    | ID | Tipo | Familia |
+    |---|---|---|
+    | `t0000002198` | Cuenta de cobro | Legacy |
+    | `t0000002199` | Recibo de pago | Legacy |
+    | `t0000002000` | Constancia | Legacy |
+    | `t0000003000` | Voucher de producción | Ordamy |
+    | `t0000003001` | Cuenta de cobro | Ordamy |
+    | `t0000003002` | Corte diario | Ordamy |
+    | `t0000003003` | Corte mensual | Ordamy |
+
+    ## Notas Importantes
+    - El campo `amount` en `documentData` es **obligatorio para todos los templates**, incluso si el template no lo muestra
+    - El servicio elimina los separadores de miles (puntos) de `amount` con regex `/\./g` antes de convertir a letras
+    - No hay autenticación. El servicio está diseñado para consumo interno
+  version: 0.0.1
+  contact:
+    name: Core Team
+    email: lead@bigso.co
+
+servers:
+  - url: http://localhost:3000
+    description: Desarrollo local (bigso.local)
+  - url: https://viewer.bigso.co
+    description: Producción y QA (bigso.prod, bigso.qa)
+
+tags:
+  - name: Health
+    description: Verificación del estado del servicio
+  - name: PDF Generation
+    description: Generación de documentos PDF
+  - name: PDF Download
+    description: Descarga de PDFs generados vía enlace cifrado
+
+paths:
+  /:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Verifica que el servicio está activo. Retorna texto plano.
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Servicio activo
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Hello World!
+
+  /api/generate/pdf:
+    post:
+      tags:
+        - PDF Generation
+      summary: Generar PDF — descarga directa
+      description: |
+        Genera un documento PDF a partir de un template y datos proporcionados, y lo retorna
+        como descarga directa binaria. El archivo PDF se elimina del disco automáticamente
+        **2 segundos** después de enviarse.
+      operationId: generatePdfDirect
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDocumentDTO'
+            examples:
+              cuentaCobro:
+                summary: Cuenta de cobro legacy (t0000002198)
+                value:
+                  templateId: t0000002198
+                  documentData:
+                    documentId: FC-2026-0001
+                    date: 03 de marzo de 2026
+                    client:
+                      name: Empresa ABC S.A.S
+                      docType: NIT
+                      docNumber: '900.123.456-7'
+                    creditor:
+                      name: Juan Pérez
+                      docType: CC
+                      docNumber: '1.234.567.890'
+                    amount: '1500000'
+                    items:
+                      - description: Servicio de consultoría técnica — febrero 2026
+                      - description: Soporte técnico remoto — 40 horas
+                    signature: a1b2c3d4e5f6
+              voucherProduccion:
+                summary: Voucher de producción Ordamy (t0000003000)
+                value:
+                  templateId: t0000003000
+                  documentData:
+                    documentId: ORD-1
+                    date: 04 de marzo de 2026
+                    amount: '25000'
+                    companyName: JAIDER PUBLICIDAD
+                    status: ACTIVE
+                    operationalStatus: PENDING
+                    sellerName: CARLOS MONTES
+                    dueDate: 10 de marzo de 2026
+                    notes: ESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOE
+                    subtotal: '25000'
+                    taxRate: '0'
+                    taxAmount: '0'
+                    discount: '0'
+                    balance: '25000'
+                    customer:
+                      name: pepito perez
+                      identification: '123'
+                      phone: '123'
+                      email: mail@mail.com
+                      address: calle 22
+                    items:
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                    signature: abc123
+              cuentaCobro_ordamy:
+                summary: Cuenta de cobro Ordamy (t0000003001)
+                value:
+                  templateId: t0000003001
+                  documentData:
+                    documentId: ORD-1
+                    date: 04 de marzo de 2026
+                    amount: '25000'
+                    companyName: JAIDER PUBLICIDAD
+                    status: ACTIVE
+                    operationalStatus: PENDING
+                    sellerName: CARLOS MONTES
+                    dueDate: 10 de marzo de 2026
+                    notes: ESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOEESTAS SON LAS NOTAS DE JOE
+                    subtotal: '25000'
+                    taxRate: '0'
+                    taxAmount: '0'
+                    discount: '0'
+                    balance: '25000'
+                    customer:
+                      name: pepito perez
+                      identification: '123'
+                      phone: '123'
+                      email: mail@mail.com
+                      address: calle 22
+                    items:
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                      - description: banner 100x120
+                        quantity: '1'
+                        unitPrice: '25000'
+                        lineTotal: '25000'
+                    signature: abc123
+              corteDiario:
+                summary: Corte diario Ordamy (t0000003002)
+                value:
+                  templateId: t0000003002
+                  documentData:
+                    companyName: JADER PUBLICIDAD
+                    date: '04/03/2026'
+                    amount: '20000'
+                    income: '25,000'
+                    expenses: '5,000'
+                    net: '20,000'
+                    ordersCreated: 1
+                    incomeByMethod:
+                      - method: Bancolombia
+                        transactions: 2
+                        total: '22,000'
+                      - method: Efectivo
+                        transactions: 1
+                        total: '3,000'
+                    incomeTotalAmount: '25,000'
+                    expensesByMethod:
+                      - method: Efectivo
+                        transactions: 1
+                        total: '5,000'
+                    expensesTotalAmount: '5,000'
+                    payments:
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Bancolombia
+                        amount: '20,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Bancolombia
+                        amount: '2,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                      - orderNumber: 1
+                        customer: pepito perez
+                        method: Efectivo
+                        amount: '3,000'
+                    expenseDetails:
+                      - description: cinta
+                        category: Materiales de oficina
+                        method: Efectivo
+                        amount: '5,000'
+                    documentId: CORTE-20260304
+                    signature: abc123
+              corteMensual:
+                summary: Corte mensual Ordamy (t0000003003)
+                value:
+                  templateId: t0000003003
+                  documentData:
+                    companyName: JADER PUBLICIDAD
+                    date: Marzo 2026
+                    amount: '20000'
+                    income: '25,000'
+                    expenses: '5,000'
+                    net: '20,000'
+                    ordersCount: 1
+                    ordersTotal: '25,000'
+                    incomeByMethod:
+                      - method: Bancolombia
+                        transactions: 2
+                        total: '22,000'
+                      - method: Efectivo
+                        transactions: 1
+                        total: '3,000'
+                    incomeTotalAmount: '25,000'
+                    expensesByMethod:
+                      - method: Efectivo
+                        transactions: 1
+                        total: '5,000'
+                    expensesTotalAmount: '5,000'
+                    expensesByCategory:
+                      - category: Materiales de oficina
+                        quantity: 1
+                        total: '5,000'
+                    documentId: CORTE-MAR-2026
+                    signature: abc123
+      responses:
+        '200':
+          description: PDF generado exitosamente
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Error de validación o generación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+            text/plain:
+              schema:
+                type: string
+              examples:
+                templateInvalido:
+                  summary: Template ID no registrado
+                  value: alltemplates[templateId] is not a function
+                amountFalta:
+                  summary: Campo amount faltante en documentData
+                  value: Cannot read properties of undefined (reading 'replace')
+                imagenFalta:
+                  summary: Imagen faltante (solo templates legacy)
+                  value: "ENOENT: no such file or directory, open 'public/img/header.png'"
+
+  /api/generate/link:
+    post:
+      tags:
+        - PDF Generation
+      summary: Generar PDF — enlace temporal cifrado
+      description: |
+        Genera el PDF en disco y retorna un enlace temporal cifrado con AES para descargarlo
+        posteriormente. El archivo se elimina automáticamente del disco tras el tiempo
+        especificado en `docTimeOut`.
+
+        El valor por defecto de `docTimeOut` es **200000 ms** (200 segundos ≈ 3.3 minutos).
+      operationId: generatePdfLink
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDocumentDTO'
+            example:
+              templateId: t0000002199
+              docTimeOut: 300000
+              documentData:
+                documentId: RP-2026-0042
+                date: 05 de marzo de 2026
+                client:
+                  name: María García
+                  docType: CC
+                  docNumber: '52.987.654'
+                creditor:
+                  name: Tech Solutions LTDA
+                  docType: NIT
+                  docNumber: '800.456.789-1'
+                amount: '750000'
+                items:
+                  - description: Pago mensualidad servicio cloud — marzo 2026
+                signature: x9y8z7w6
+      responses:
+        '200':
+          description: Enlace temporal generado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkResponse'
+        '400':
+          description: Error de validación o generación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+            text/plain:
+              schema:
+                type: string
+
+  /api/generate/download/{path}:
+    get:
+      tags:
+        - PDF Download
+      summary: Descargar PDF por enlace cifrado
+      description: |
+        Descarga un PDF previamente generado usando el enlace cifrado obtenido del endpoint
+        `POST /api/generate/link`. El parámetro `path` es el valor de `pathFile` retornado.
+      operationId: downloadPdf
+      parameters:
+        - name: path
+          in: path
+          required: true
+          description: Ruta cifrada del archivo PDF (valor de `pathFile` del endpoint `/api/generate/link`)
+          schema:
+            type: string
+          example: U2FsdGVkX1+abc123encryptedPathBase64==
+      responses:
+        '200':
+          description: PDF descargado exitosamente
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Error de descifrado
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: Error de descifrado de crypto-js
+        '404':
+          description: Archivo no encontrado (expirado o inexistente)
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: File Not Found
+
+components:
+  schemas:
+    CreateDocumentDTO:
+      type: object
+      required:
+        - templateId
+        - documentData
+      properties:
+        templateId:
+          type: string
+          description: |
+            ID del template a utilizar. Debe coincidir exactamente con uno de los templates registrados.
+          enum:
+            - t0000002198
+            - t0000002199
+            - t0000002000
+            - t0000003000
+            - t0000003001
+            - t0000003002
+            - t0000003003
+          example: t0000003001
+        docTimeOut:
+          type: number
+          description: |
+            Tiempo de vida del archivo en milisegundos. Solo aplica para el endpoint `/api/generate/link`.
+            Default: 200000 (200 segundos). Se ignora en `/api/generate/pdf`.
+          example: 300000
+        documentData:
+          type: object
+          description: |
+            Objeto con los datos del documento. La estructura interna depende del template.
+            El campo `amount` (string) es **obligatorio para todos los templates** porque el servicio
+            lo procesa para generar `amountInLetters` antes de invocar cualquier template.
+          required:
+            - amount
+            - signature
+          properties:
+            amount:
+              type: string
+              description: |
+                Monto numérico como string. Puede incluir separadores de miles con punto (ej: "1.500.000").
+                El servicio elimina todos los puntos con regex antes de convertir a número.
+              example: '25000'
+            signature:
+              type: string
+              description: Cadena de seguridad que se muestra en cada página del PDF
+              example: abc123
+          additionalProperties: true
+
+    LinkResponse:
+      type: object
+      properties:
+        pathFile:
+          type: string
+          description: Ruta del archivo PDF cifrada con AES y codificada en Base64. Se usa como parámetro `:path` para el endpoint de descarga.
+          example: U2FsdGVkX1+abc123encryptedPathBase64==
+        documentLife:
+          type: string
+          description: Tiempo de vida del archivo en milisegundos seguido de "ms"
+          example: 300000ms
+
+    ValidationError:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          example: 400
+        message:
+          type: array
+          items:
+            type: string
+          example:
+            - templateId should not be empty
+            - templateId must be a string
+            - documentData should not be an empty object
+            - documentData must be an object
+        error:
+          type: string
+          example: Bad Request
